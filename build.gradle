@@ -10,12 +10,15 @@ version '1.0-SNAPSHOT'
 
 sourceCompatibility = 1.8
 
+mainClassName = "org.usfirst.frc.team1294.vision.Application"
+
 repositories {
   mavenCentral()
   maven {
     url "http://first.wpi.edu/FRC/roborio/maven/release"
   }
 }
+
 dependencies {
   compile group: 'com.google.guava', name: 'guava', version: '23.2-jre'
   compile group: 'io.vertx', name: 'vertx-core', version: '3.4.2'
