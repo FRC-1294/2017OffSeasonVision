@@ -11,4 +11,8 @@ To run:
 ```./gradlew run```
 Then point a browser to http://localhost:8080
 
+There are many articles and videos on the web on how to train your own cascade....
+* http://coding-robin.de/2013/07/22/train-your-own-opencv-haar-classifier.html
+* https://www.youtube.com/watch?v=jG3bu0tjFbk
+* https://memememememememe.me/post/training-haar-cascades/
 
