@@ -2,6 +2,7 @@ package org.usfirst.frc.team1294.vision;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.Router;
@@ -25,22 +26,36 @@ public class MJpegStreamerVerticle extends AbstractVerticle {
   private void handle(RoutingContext routingContext) {
     final HttpServerResponse response = routingContext.response();
     response.setChunked(true);
+
     response.setStatusCode(200);
     response.headers().add("Cache-Control", "no-cache");
     response.headers().add("Cache-Control", "private");
     response.headers().add("Pragma", "no-cache");
     response.headers().add("Content-Type", "multipart/x-mixed-replace; boundary=" + BOUNDARY);
 
-    vertx.eventBus().consumer("images", handler -> {
-      final Buffer imageBuffer = (Buffer)handler.body();
-      response.write(BOUNDARY);
-      response.write(CRLF);
-      response.write("Content-type: image/jpeg");
-      response.write(CRLF);
-      response.write("Content-Length: " + imageBuffer.length());
-      response.write(CRLF);
-      response.write(CRLF);
-      response.write(imageBuffer);
+    response.setWriteQueueMaxSize(20480); // 20k max write queue size
+
+    final MessageConsumer<Object> consumer = vertx.eventBus().consumer("images", handler -> {
+      if (!response.writeQueueFull()) {
+        final Buffer imageBuffer = (Buffer) handler.body();
+        response.write(BOUNDARY);
+        response.write(CRLF);
+        response.write("Content-type: image/jpeg");
+        response.write(CRLF);
+        response.write("Content-Length: " + imageBuffer.length());
+        response.write(CRLF);
+        response.write(CRLF);
+        response.write(imageBuffer);
+      }
     });
+
+    response.exceptionHandler(handler -> {
+      response.end();
+    });
+
+    response.endHandler(handler -> {
+      consumer.unregister();
+    });
+
   }
 }

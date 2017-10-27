@@ -5,81 +5,72 @@ import io.vertx.core.buffer.Buffer;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
 import org.opencv.core.MatOfInt;
-import org.opencv.core.MatOfRect;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.objdetect.CascadeClassifier;
-import org.opencv.objdetect.Objdetect;
 import org.opencv.videoio.VideoCapture;
+
+import static org.opencv.videoio.Videoio.CV_CAP_PROP_BUFFERSIZE;
+import static org.opencv.videoio.Videoio.CV_CAP_PROP_FRAME_HEIGHT;
+import static org.opencv.videoio.Videoio.CV_CAP_PROP_FRAME_WIDTH;
 
 public class ComputerVisionVerticle extends AbstractVerticle {
 
-  private static final int MAX_FPS = 30;
+  private final ComputerVisionConfig computerVisionConfig;
 
   private final VideoCapture videoCapture;
   private final Mat originalImage;
-  private final Mat grayImage;
-  private final CascadeClassifier cascadeClassifier;
+  private final TargetDetector targetDetector;
 
-  public ComputerVisionVerticle() {
+  public ComputerVisionVerticle(final ComputerVisionConfig computerVisionConfig,
+      final TargetDetector targetDetector) {
+    this.computerVisionConfig = computerVisionConfig;
+    this.targetDetector = targetDetector;
+
     videoCapture = new VideoCapture(0);
+    videoCapture.set(CV_CAP_PROP_BUFFERSIZE, 3);
+    videoCapture.set(CV_CAP_PROP_FRAME_WIDTH, computerVisionConfig.getWidth());
+    videoCapture.set(CV_CAP_PROP_FRAME_HEIGHT, computerVisionConfig.getHeight());
+
     originalImage = new Mat();
-    grayImage = new Mat();
-    cascadeClassifier = new CascadeClassifier("data/haarcascade_frontalface_default.xml");
   }
 
   @Override
   public void start() throws Exception {
-    scheduleWork(0);
+    vertx.setTimer(1, this::doWork);
   }
 
-  private void handleTimer(Long aLong) {
+  private void doWork(Long aLong) {
     final long startTime = System.currentTimeMillis();
     try {
-      captureFrameAndDetectFaces();
-      publishImageToEventBus();
+      // read the next frame from video
+      videoCapture.read(originalImage);
+
+      //
+      if (computerVisionConfig.getWidth() < originalImage.width() || computerVisionConfig.getHeight() < originalImage.height()) {
+        // resize image since it came form the camera too big despite us telling it not to
+        Imgproc.resize(originalImage, originalImage, new Size(computerVisionConfig.getWidth(), computerVisionConfig.getHeight()));
+      }
+
+      // run the detection algorithm
+      final Rect[] targets = targetDetector.doDetection(originalImage);
+
+      // convert the image to jpeg
+      MatOfByte m = new MatOfByte();
+      MatOfInt parameters = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100);
+      Imgcodecs.imencode(".jpg", originalImage, m, parameters);
+      final Buffer buffer = Buffer.buffer(m.toArray());
+
+      // publish the image on the eventbus
+      vertx.eventBus().publish("images", buffer);
+    } catch (Exception ex) {
+      ex.printStackTrace();
     } finally {
-      scheduleWork(startTime);
+      // set a timer to do more work
+      long delay = Math.max(1, (long) (1 / (double) this.computerVisionConfig.getMaxFps() * 1000) - (System.currentTimeMillis() - startTime));
+      vertx.setTimer(delay, this::doWork);
     }
-  }
-
-  private void scheduleWork(long startTime) {
-    long delay = (long) (1 / (double)MAX_FPS * 1000) - (System.currentTimeMillis() - startTime);
-    if (delay < 1) {
-      delay = 1;
-    }
-    vertx.setTimer(delay, this::handleTimer);
-  }
-
-  private void captureFrameAndDetectFaces() {
-    videoCapture.read(originalImage);
-
-    Imgproc.cvtColor(originalImage, grayImage, Imgproc.COLOR_BGR2GRAY);
-
-    final MatOfRect faces = new MatOfRect();
-    cascadeClassifier.detectMultiScale(grayImage,
-        faces,
-        1.3,
-        3,
-        0| Objdetect.CASCADE_SCALE_IMAGE,
-        new Size(30, 30),
-        new Size());
-
-    for (Rect rect : faces.toArray()) {
-      Scalar color_red = new Scalar(0, 0, 255);
-      Imgproc.rectangle(originalImage, rect.tl(), rect.br(), color_red);
-    }
-  }
-
-  private void publishImageToEventBus() {
-    MatOfByte m = new MatOfByte();
-    MatOfInt parameters = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 100);
-    Imgcodecs.imencode(".jpg", originalImage, m, parameters);
-    final Buffer buffer = Buffer.buffer(m.toArray());
-
-    vertx.eventBus().publish("images", buffer);
   }
 }

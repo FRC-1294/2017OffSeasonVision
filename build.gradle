@@ -17,19 +17,25 @@ repositories {
   maven {
     url "http://first.wpi.edu/FRC/roborio/maven/release"
   }
+  maven {
+    url  "https://dl.bintray.com/frc-1294/Robot-Code"
+  }
 }
 
 dependencies {
   compile group: 'com.google.guava', name: 'guava', version: '23.2-jre'
   compile group: 'io.vertx', name: 'vertx-core', version: '3.4.2'
   compile group: 'io.vertx', name: 'vertx-web', version: '3.4.2'
+  compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+  compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
 
-  compile files("$rootDir/lib/opencv-310.jar")
+  compile group: 'org.usfirst.frc.team1294', name: 'opencv-331', version: '0.1.0-dev.0.20+0e242cb9efd256bf16182e3daf8e6bc0cefeaca8'
 
-  compile group: 'edu.wpi.first.wpilib.networktables.java', name: 'NetworkTables', version: '3.1.7', classifier: 'desktop'
-  //compile group: 'edu.wpi.first.wpilib.networktables.java', name: 'NetworkTables', version: '3.1.7', classifier: 'arm'
+  compile group: 'edu.wpi.first.wpilib.networktables.java', name: 'NetworkTables', version: '3.1.7', classifier: System.properties['os.arch'] == 'arm' ? 'arm' : 'desktop'
 
   testCompile group: 'junit', name: 'junit', version: '4.12'
+
+
 }
 
 jar {
