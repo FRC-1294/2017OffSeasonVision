@@ -10,8 +10,8 @@ public class Application {
     OpenCV.loadNativeLibraries();
 
     final Vertx vertx = Vertx.vertx();
-    final ComputerVisionConfig computerVisionConfig = new ComputerVisionConfig(15, 320, 240);
-    final HaarCascadeTargetDetector targetDetector = new HaarCascadeTargetDetector();
+    final ComputerVisionConfig computerVisionConfig = new ComputerVisionConfig(15, 800, 600);
+    final TargetDetector targetDetector = new Features2DPlusHomographyTargetDetector();
     final ComputerVisionVerticle computerVisionVerticle = new ComputerVisionVerticle(
         computerVisionConfig, targetDetector);
     vertx.deployVerticle(computerVisionVerticle, new DeploymentOptions().setWorker(true));
