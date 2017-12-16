@@ -6,11 +6,12 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
 import org.opencv.core.MatOfInt;
 import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.opencv.videoio.Videoio.CV_CAP_PROP_BUFFERSIZE;
 import static org.opencv.videoio.Videoio.CV_CAP_PROP_FRAME_HEIGHT;
@@ -18,8 +19,9 @@ import static org.opencv.videoio.Videoio.CV_CAP_PROP_FRAME_WIDTH;
 
 public class ComputerVisionVerticle extends AbstractVerticle {
 
-  private final ComputerVisionConfig computerVisionConfig;
+  private static final Logger logger = LoggerFactory.getLogger(ComputerVisionVerticle.class);
 
+  private final ComputerVisionConfig computerVisionConfig;
   private final VideoCapture videoCapture;
   private final Mat originalImage;
   private final TargetDetector targetDetector;
@@ -48,7 +50,6 @@ public class ComputerVisionVerticle extends AbstractVerticle {
       // read the next frame from video
       videoCapture.read(originalImage);
 
-      //
       if (computerVisionConfig.getWidth() < originalImage.width() || computerVisionConfig.getHeight() < originalImage.height()) {
         // resize image since it came form the camera too big despite us telling it not to
         Imgproc.resize(originalImage, originalImage, new Size(computerVisionConfig.getWidth(), computerVisionConfig.getHeight()));
@@ -68,8 +69,11 @@ public class ComputerVisionVerticle extends AbstractVerticle {
     } catch (Exception ex) {
       ex.printStackTrace();
     } finally {
+      final long elapsedTime = System.currentTimeMillis() - startTime;
+      logger.debug("ElapsedTime: " + elapsedTime);
+
       // set a timer to do more work
-      long delay = Math.max(1, (long) (1 / (double) this.computerVisionConfig.getMaxFps() * 1000) - (System.currentTimeMillis() - startTime));
+      long delay = Math.max(1, (long) (1 / (double) this.computerVisionConfig.getMaxFps() * 1000) - elapsedTime);
       vertx.setTimer(delay, this::doWork);
     }
   }

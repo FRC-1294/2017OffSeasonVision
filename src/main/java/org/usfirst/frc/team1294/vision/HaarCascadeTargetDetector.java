@@ -1,5 +1,6 @@
 package org.usfirst.frc.team1294.vision;
 
+import com.google.common.io.Resources;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Rect;
@@ -9,13 +10,28 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.objdetect.Objdetect;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 public class HaarCascadeTargetDetector extends TargetDetector {
 
   private final CascadeClassifier cascadeClassifier;
   private final Scalar color_red;
 
   public HaarCascadeTargetDetector() {
-    cascadeClassifier = new CascadeClassifier("data/haarcascade_frontalface_default.xml");
+    final String path;
+    try {
+      final File tempFile = File.createTempFile("cascade", ".xml");
+      tempFile.deleteOnExit();
+      path = tempFile.getAbsolutePath();
+      try (FileOutputStream fileOutputStream = new FileOutputStream(tempFile)) {
+        Resources.copy(Resources.getResource("haarcascade_frontalface_default.xml"), fileOutputStream);
+      }
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+    cascadeClassifier = new CascadeClassifier(path);
     color_red = new Scalar(0, 0, 255);
   }
 
